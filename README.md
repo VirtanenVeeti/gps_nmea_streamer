@@ -1,16 +1,21 @@
-# gps_nmea_streamer
+#gps_nmea_streamer
+___________________________________
+Tested on:
+  Android phone: 
+   - Samsung Galaxy Flips 5
+     
+  IOS phone:
 
-A new Flutter project.
+___________________________________
+WHAT IS THIS DOING?
 
-## Getting Started
+The app turns your phone into a network-connected GPS antenna. It works in three steps:
 
-This project is a starting point for a Flutter application.
+Displays Data: Shows your real-time coordinates, speed, and heading on a clear on-screen dashboard.
 
-A few resources to get you started if this is your first Flutter project:
+Converts to NMEA: Automatically formats raw GPS data into the standard NMEA 0183 ($GPRMC) format used in marine navigation.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Streams via UDP: Sends the NMEA sentences over Wi-Fi to a chosen IP address and port. This allows software like OpenCPN or other chartplotters to use your phone's GPS as their primary location source.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+___________________________________
+INSTALLING GUIDE:
