@@ -1,3 +1,4 @@
+// GPS NMEA Network Streamer
 import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
@@ -16,13 +17,13 @@ class GpsNmeaApp extends StatefulWidget {
 
 class _GpsNmeaAppState extends State<GpsNmeaApp> {
   bool _isStreaming = false;
-  String _lastGpsData = "Odotetaan GPS-tietoa...";
+  String _lastGpsData = "Waiting for GPS data...";
   StreamSubscription<Position>? _positionStream;
   RawDatagramSocket? _sendSocket;
   int _packetCount = 0;
   bool _gpsActive = false;
 
-  // Lähetys asetukset
+  // Transmission settings
   final TextEditingController _sendIpController =
       TextEditingController(text: "192.168.1.255");
   final TextEditingController _sendPortController =
@@ -44,13 +45,13 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
   }
 
   Future<void> _startGpsMonitoring() async {
-    // Tarkista GPS-luvat
+    // Check GPS permissions
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         setState(() {
-          _lastGpsData = "GPS-lupa evätty!";
+          _lastGpsData = "GPS permission denied!";
         });
         return;
       }
@@ -58,13 +59,14 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
 
     if (permission == LocationPermission.deniedForever) {
       setState(() {
-        _lastGpsData = "GPS-lupa evätty pysyvästi! Salli lupa asetuksista.";
+        _lastGpsData =
+            "GPS permission permanently denied! Allow permission in settings.";
       });
       return;
     }
 
     try {
-      // Aloita GPS-kuuntelu
+      // Start GPS listening
       _positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -76,21 +78,21 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
 
       setState(() {
         _gpsActive = true;
-        _lastGpsData = "GPS käynnissä, odotetaan signaalia...";
+        _lastGpsData = "GPS running, waiting for signal...";
       });
     } catch (e) {
       setState(() {
-        _lastGpsData = "GPS-virhe: $e";
+        _lastGpsData = "GPS error: $e";
       });
     }
   }
 
   void _updateGpsData(Position position) {
-    // Luodaan NMEA RMC-tyylinen lause
+    // Create NMEA RMC-style sentence
     String nmea = _generateRMC(position);
     String humanReadable = _generateHumanReadable(position);
 
-    // Lähetetään verkkoon vain jos striimaus on päällä
+    // Send to network only if streaming is active
     if (_isStreaming && _sendSocket != null) {
       try {
         String sendIp = _sendIpController.text;
@@ -103,14 +105,14 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
         );
 
         setState(() {
-          _lastGpsData = "LÄHETETTY:\n$humanReadable\n\nNMEA:\n$nmea";
+          _lastGpsData = "SENT:\n$humanReadable\n\nNMEA:\n$nmea";
           _packetCount++;
         });
       } catch (e) {
-        print("Lähetysvirhe: $e");
+        print("Send error: $e");
       }
     } else {
-      // Näytetään data vaikka ei lähetetäkään
+      // Display data even if not sending
       setState(() {
         _lastGpsData = humanReadable + "\n\nNMEA:\n$nmea";
       });
@@ -118,13 +120,13 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
   }
 
   String _generateHumanReadable(Position pos) {
-    return "Leveysaste: ${pos.latitude.toStringAsFixed(6)}\n"
-        "Pituusaste: ${pos.longitude.toStringAsFixed(6)}\n"
-        "Korkeus: ${pos.altitude.toStringAsFixed(1)} m\n"
-        "Nopeus: ${(pos.speed * 3.6).toStringAsFixed(1)} km/h\n"
-        "Suunta: ${pos.heading.toStringAsFixed(1)}°\n"
-        "Tarkkuus: ${pos.accuracy.toStringAsFixed(1)} m\n"
-        "Aika: ${pos.timestamp}";
+    return "Latitude: ${pos.latitude.toStringAsFixed(6)}\n"
+        "Longitude: ${pos.longitude.toStringAsFixed(6)}\n"
+        "Altitude: ${pos.altitude.toStringAsFixed(1)} m\n"
+        "Speed: ${(pos.speed * 3.6).toStringAsFixed(1)} km/h\n"
+        "Heading: ${pos.heading.toStringAsFixed(1)}°\n"
+        "Accuracy: ${pos.accuracy.toStringAsFixed(1)} m\n"
+        "Time: ${pos.timestamp}";
   }
 
   void _toggleStreaming() async {
@@ -138,7 +140,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
       });
     } else {
       try {
-        // Luodaan lähetys-socket
+        // Create send socket
         _sendSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
         _sendSocket?.broadcastEnabled = true;
 
@@ -150,7 +152,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
         });
       } catch (e) {
         setState(() {
-          _lastGpsData = "Verkkovirhe: $e\n\n$_lastGpsData";
+          _lastGpsData = "Network error: $e\n\n$_lastGpsData";
         });
       }
     }
@@ -174,12 +176,12 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
       return "$degStr${min.toStringAsFixed(4)},$dir";
     }
 
-    // Nopeus solmuiksi ja suunta
+    // Speed in knots and heading
     double speedKnots = pos.speed * 1.94384;
     String payload =
         "GPRMC,$time,A,${formatCoord(pos.latitude, true)},${formatCoord(pos.longitude, false)},${speedKnots.toStringAsFixed(1)},${pos.heading.toStringAsFixed(1)},$date,,";
 
-    // Checksumin laskenta
+    // Calculate checksum
     int checksum = 0;
     for (int i = 0; i < payload.length; i++) {
       checksum ^= payload.codeUnitAt(i);
@@ -225,9 +227,9 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Lähetys asetukset
+            // Transmission settings
             const Text(
-              "LÄHETYS ASETUKSET",
+              "TRANSMISSION SETTINGS",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -236,12 +238,12 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
             ),
             const SizedBox(height: 10),
             _buildTextField(
-              "Lähetys IP-osoite",
+              "Transmission IP address",
               _sendIpController,
               !_isStreaming,
             ),
             _buildTextField(
-              "Lähetys portti",
+              "Transmission port",
               _sendPortController,
               !_isStreaming,
             ),
@@ -258,7 +260,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "GPS: ${_gpsActive ? 'AKTIIVINEN' : 'EI AKTIIVINEN'}",
+                    "GPS: ${_gpsActive ? 'ACTIVE' : 'INACTIVE'}",
                     style: TextStyle(
                       color: _gpsActive ? Colors.green : Colors.red,
                       fontWeight: FontWeight.bold,
@@ -266,7 +268,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "Striimaus: ${_isStreaming ? 'KÄYNNISSÄ' : 'PYSÄYTETTY'}",
+                    "Streaming: ${_isStreaming ? 'RUNNING' : 'STOPPED'}",
                     style: TextStyle(
                       color: _isStreaming ? Colors.green : Colors.orange,
                       fontWeight: FontWeight.bold,
@@ -274,7 +276,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "Paketteja lähetetty: $_packetCount",
+                    "Packets sent: $_packetCount",
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
@@ -308,7 +310,7 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
             ),
             const SizedBox(height: 30),
 
-            // Aloita/Pysäytä nappi
+            // Start/Stop button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isStreaming ? Colors.red : Colors.green,
@@ -316,7 +318,9 @@ class _GpsNmeaAppState extends State<GpsNmeaApp> {
               ),
               onPressed: _toggleStreaming,
               child: Text(
-                _isStreaming ? "PYSÄYTÄ VERKKOLÄHETYS" : "ALOITA VERKKOLÄHETYS",
+                _isStreaming
+                    ? "STOP NETWORK TRANSMISSION"
+                    : "START NETWORK TRANSMISSION",
                 style: const TextStyle(fontSize: 18),
               ),
             ),
