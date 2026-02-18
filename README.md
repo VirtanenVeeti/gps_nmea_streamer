@@ -19,3 +19,6 @@ Streams via UDP: Sends the NMEA sentences over Wi-Fi to a chosen IP address and 
 
 ___________________________________
 INSTALLING GUIDE:
+
+___________________________________
+Example of the code for the receiving device:
