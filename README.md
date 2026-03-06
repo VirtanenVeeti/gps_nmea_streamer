@@ -1,12 +1,3 @@
-#gps_nmea_streamer
-___________________________________
-Tested on:
-  Android phone: 
-   - Samsung Galaxy Flips 5
-     
-  IOS phone:
-
-___________________________________
 WHAT IS THIS DOING?
 
 The app turns your phone into a network-connected GPS antenna. It works in three steps:
